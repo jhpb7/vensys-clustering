@@ -109,9 +109,6 @@ See examples/output_files/ for concrete results.
 
     The max load case ensures system sizing robustness.
 
-## License
-
-Specify your license in LICENSE (e.g., MIT or BSD).
 
 ## Contributing
 
