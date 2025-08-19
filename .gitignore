@@ -1,0 +1,17 @@
+
+---
+
+#### 8. **.gitignore**
+
+```gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+dist/
+build/
+*.mplstyle
+*Zone.Identifier
+**/*.egg-info*

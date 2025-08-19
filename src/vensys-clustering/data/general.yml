@@ -1,0 +1,77 @@
+room_type: ["sanitary", "classroom", "kitchen", "meeting_room"]
+time_slot: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+occupancy_data:
+  sanitary:
+    5: 0
+    6: 0.4
+    7: 0.4
+    8: 0.1
+    9: 0.2
+    10: 0.3
+    11: 0.2
+    12: 0.5
+    13: 0.8
+    14: 0.5
+    15: 0.2
+    16: 0.2
+    17: 0.2
+    18: 0.1
+  classroom:
+    5: 0
+    6: 0
+    7: 0.4
+    8: 0.4
+    9: 0.6
+    10: 0.7
+    11: 0.6
+    12: 0.4
+    13: 0.3
+    14: 0.7
+    15: 0.6
+    16: 0.4
+    17: 0.2
+    18: 0
+  kitchen:
+    5: 0
+    6: 0.4
+    7: 0.4
+    8: 0.2
+    9: 0.3
+    10: 0.6
+    11: 0.8
+    12: 0.3
+    13: 1
+    14: 1
+    15: 0.4
+    16: 0.6
+    17: 0.2
+    18: 0.1
+  meeting_room: 
+    5: 0
+    6: 0
+    7: 0.4
+    8: 0.4
+    9: 0.5
+    10: 0.8
+    11: 0.9
+    12: 0.8
+    13: 0
+    14: 0.7
+    15: 0.8
+    16: 0.8
+    17: 0.7
+    18: 0
+q_per_person:
+  values:
+    sanitary: 5
+    classroom: 30
+    kitchen: 20
+    meeting_room: 20
+  unit: m^3/h/person
+q_per_area:
+  values:
+    sanitary: 0
+    classroom: 2.5
+    kitchen: 2.5
+    meeting_room: 2.5
+  unit: m^3/h/m^2
