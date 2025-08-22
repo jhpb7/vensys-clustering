@@ -1,14 +1,13 @@
+from typing import Dict, List, Tuple, Optional
+from collections import defaultdict, Counter
+
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, wasserstein_distance
 from scipy.signal import convolve
 from sklearn.cluster import AgglomerativeClustering
-from typing import Dict, List, Tuple, Optional
-from collections import defaultdict
-
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
-from collections import Counter
 
 
 def max_binom_volumeflow_pmf(

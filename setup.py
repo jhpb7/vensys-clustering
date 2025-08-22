@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="vensys-clustering",
+    name="vensys_clustering",
     version="0.1.0",
     description="Scenario reduction and probabilistic modeling for ventilation demand planning",
     author="Julius Breuer",
