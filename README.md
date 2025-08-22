@@ -1,4 +1,4 @@
-# `VenSyS_Clustering`: Ventilation System Scenario Reduction Toolkit
+# `VenSyS-Clustering`: Ventilation System Scenario Reduction Toolkit
 
 A Python toolkit for constructing **ventilation demand scenarios** from room-level data.  
 It reduces the complexity of hourly load profiles by clustering operating hours into a small number of representative **load cases**. Each case is summarized by mean and quantile airflows, and a **theoretical maximum** load case can be added for robustness.
