@@ -109,6 +109,9 @@ See examples/output_files/ for concrete results.
 
     The max load case ensures system sizing robustness.
 
+## Note on AI usage
+Parts of this repository (documentation and/or code snippets) were prepared with the assistance of AI-based tools, namely ChatGPT version 4 and 5. All outputs were reviewed, validated, and adapted by the authors.
+
 
 ## Contributing
 
