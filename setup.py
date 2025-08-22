@@ -8,7 +8,7 @@ setup(
     author_email="juliusbreuer@posteo.de",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
-    package_data={"vensys-clustering": ["data/general.yml"]},
+    package_data={"vensys_clustering": ["data/general.yml"]},
     install_requires=["numpy", "pandas", "scipy", "matplotlib", "scikit-learn"],
     classifiers=[
         "Programming Language :: Python :: 3",
