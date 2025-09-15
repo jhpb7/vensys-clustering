@@ -27,12 +27,17 @@ The occupancy profiles per building type are taken from DIN V 16798-1 and the ai
 
 ## Installation
 
-```bash
 # from the project root
-pip install -e .
-
-# or install only runtime dependencies
-pip install numpy pandas scipy scikit-learn matplotlib ruamel.yaml
+```bash
+pip install .
+```
+If you want to directly install from GitHub (without cloning):
+```bash
+pip install git+https://github.com/jhpb7/vensys-clustering
+```
+To install all subpackages use
+```bash
+pip install -r requirements.txt
 ```
 
 Python ≥ 3.8 required
