@@ -114,6 +114,6 @@ q_per_area:
     classroom: 2.5
     kitchen: 2.5
     meeting_room: 2.5
-    cellular_office: 4
-    open-plan_office: 6
+    cellular_office: 2.5
+    open-plan_office: 2.5
   unit: m^3/h/m^2
