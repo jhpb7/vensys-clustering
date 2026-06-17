@@ -1,58 +1,55 @@
-# `VenSyS-Clustering`: Ventilation System Scenario Reduction Toolkit
+# VenSyS-Clustering
 
-A Python toolkit for constructing **ventilation demand scenarios** from room-level data.  
-It reduces the complexity of hourly load profiles by clustering operating hours into a small number of representative **load cases**. Each case is summarized by mean and quantile airflows, and a **theoretical maximum** load case can be added for robustness.
-The occupancy profiles per building type are taken from DIN V 16798-1 and the airflow rates come from DIN EN 18599-10.
+VenSyS-Clustering is a Python package for creating representative ventilation load cases from room-level building data. It supports deterministic, norm-based load-case generation as well as distribution-based and sampling-based approaches for uncertain occupancy.
 
-
-
-
----
+The package was developed for ventilation system planning workflows in which detailed hourly demand information has to be reduced to a smaller set of representative scenarios. The resulting load cases can be exported as YAML files and used in downstream optimisation models.
 
 ## Features
 
-- 🏢 **Room & zone airflow calculation** from occupancy profiles, per-person, and per-area requirements.  
-- ⏱ **Time-slot clustering** into representative load cases.  
-- 📊 **Scenario summaries** with means and optional quantiles (e.g., q95).  
-- 📄 **Export/import** scenarios via YAML.  
-- 🎓 Two complementary methods:
-  - **Deterministic (norm-based):** K-Means clustering on required flows.  
-    - Add a **maximal load case** with zero frequency.  
-    - Add a **revision volume flows**.
-  - **Probabilistic (distribution-based):** Wasserstein distances between per-zone PMFs. 
-    - Add **zero-inflation** to account for days when individual rooms are empty.
-
-
----
+- Compute required room and zone volume flows from building data, occupancy profiles, and normative airflow requirements.
+- Create deterministic load cases by clustering time slots based on required volume flows.
+- Add optional revision volume flows and theoretical maximum load cases.
+- Build discrete probability mass functions for room or zone volume-flow demand based on binomial occupancy assumptions.
+- Cluster time slots using Wasserstein distances between demand distributions.
+- Generate sampled load cases from room and zone distributions using quasi-Monte-Carlo sampling with Sobol sequences.
+- Export and import load-case data in YAML format.
 
 ## Installation
 
-# from the project root
+From the project root:
+
 ```bash
 pip install .
 ```
-If you want to directly install from GitHub (without cloning):
+
+To install the package directly from GitHub:
+
 ```bash
 pip install git+https://github.com/jhpb7/vensys-clustering
 ```
-To install all subpackages use
+
+To install the listed dependencies explicitly:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-Python ≥ 3.8 required
+Python 3.8 or newer is required.
 
-## Repository Layout
-```
-src/vensys-clustering/
+## Repository structure
+
+```text
+src/vensys_clustering/
   __init__.py
-  utils.py                # deterministic (norm-based) pipeline
-  wasserstein.py          # probabilistic (distribution-based) pipeline
-  data/general.yml        # example normative data
+  utils.py                  # deterministic, norm-based load-case generation
+  load_distributions.py     # probability distributions and Wasserstein clustering
+  load_case_sampling.py     # Monte Carlo and Sobol-based load-case sampling
+  data/general.yml          # general normative input data
 
 examples/
   create_profile_based_load_cases.ipynb
   create_distribution_based_load_cases.ipynb
+  create_monte_carlo_load_cases.ipynb
   compare_approaches.ipynb
   input_files/
   output_files/
@@ -61,64 +58,66 @@ requirements.txt
 setup.py
 ```
 
-See examples/ for end-to-end workflows.
+The notebooks in `examples/` show complete workflows for the available load-case generation methods.
 
-Example input files are in examples/input_files/.
+## Input data
 
-Example YAML outputs are in examples/output_files/.
+The package combines general normative data with building-specific input data.
 
+The file `src/vensys_clustering/data/general.yml` contains general data such as room categories, occupancy profiles, per-person airflow rates, and area-based airflow rates.
 
-## Input Data
-Data from the standards (src/vensys-clustering/data/general.yml)
+Building-specific input data are provided as YAML files or Python dictionaries. They typically contain the rooms of the building, the room type, floor area, maximum number of persons, and optional mappings for merging rooms into larger zones.
 
-Contains:
+## Load-case generation methods
 
-    Room categories (e.g., classroom, office, sanitary).
+### Deterministic load cases
 
-    Hourly occupancy profiles.
+The deterministic workflow computes required volume flows for each room and time slot and clusters the resulting demand vectors. The representative load cases are described by mean volume flows and optional quantiles. This approach is suitable when the normative occupancy profiles are used directly as deterministic input data.
 
-    Per-person airflow (m³/h/person).
+### Distribution-based load cases
 
-    Per-area airflow (m³/h/m²).
+The distribution-based workflow represents room demand as discrete probability mass functions. These distributions are based on binomial occupancy assumptions and include the resulting volume-flow demand from person-based and area-based requirements.
 
-Building data (user-provided)
+Time slots can be compared using the Wasserstein distance between room or zone demand distributions. This allows clustering based on the full demand distribution instead of only clustering point estimates such as mean values.
 
-A Python dict or YAML with:
+### Sampled load cases
 
-    List of rooms.
+The sampling workflow draws load cases from the room or zone demand distributions. The current implementation supports Sobol-based quasi-Monte-Carlo sampling. Identical sampled states are counted and converted into load cases with corresponding time shares.
 
-    Mapping roomtype, area, max_num_person.
-
-    (Optional) rooms_to_merge for zone aggregation.
-
-    (Optional) q_revision_tot for enforced minima.
+This approach can be used to generate Monte Carlo-style load-case sets from the probabilistic occupancy model.
 
 ## Outputs
 
-A YAML file with:
+The generated output is a YAML-compatible dictionary containing load cases and time shares. Depending on the workflow, each load case contains room- or zone-level volume-flow values such as means, quantiles, or sampled demand values.
 
-    Load cases (per cluster and zone: mean, q95, …).
+Example output files are provided in `examples/output_files/`.
 
-    Time shares (fraction of operating hours).
+## Typical workflow
 
-    Optional max case with frequency 0%.
+A typical workflow consists of the following steps:
 
-See examples/output_files/ for concrete results.
+1. Load the general data and building-specific input data.
+2. Compute required room-level volume flows.
+3. Optionally merge rooms into zones.
+4. Generate load cases using one of the available methods.
+5. Export the resulting load cases to YAML.
 
-### Tips
-    Use analyze_cluster_quality or silhouette scores to choose the number of clusters.
+The example notebooks provide runnable versions of these workflows.
 
-    Keep flow units consistent (m³/h).
+## Notes
 
-    The max load case ensures robustness.
+Keep the volume-flow units consistent across all input files. The package assumes that the normative input data and building data use compatible units.
+
+For Sobol sampling, powers of two are recommended for the number of samples because this improves the balance properties of the Sobol sequence.
 
 ## Note on AI usage
-Parts of this repository (documentation and/or code snippets) were prepared with the assistance of AI-based tools, namely ChatGPT version 4 and 5. All outputs were reviewed, validated, and adapted by the authors.
 
+Parts of this repository, including documentation and code snippets, were prepared with the assistance of AI-based tools. All outputs were reviewed, validated, and adapted by the author.
 
 ## Funding
-The presented code was written within Julius Breuer's dissertation ‘‘Algorithmische Systemplanung raumlufttechnischer Anlagen’’ at TU Darmstadt. Some of the results of the dissertation were obtained within the research project ‘‘Algorithmic System Planning of Air Handling Units’’, Project No. 22289 N/1, funded by the program for promoting the Industrial Collective Research (IGF) of the German Ministry of Economic Affairs and Climate Action (BMWK), approved by the Deutsches Zentrum für Luft- und Raumfahrt (DLR). We want to thank all the participants of the working group for the constructive collaboration.
 
+The code was developed within Julius Breuer's dissertation *Algorithmische Systemplanung raumlufttechnischer Anlagen* at TU Darmstadt. Parts of the dissertation results were obtained within the research project *Algorithmic System Planning of Air Handling Units*, Project No. 22289 N/1, funded by the program for promoting Industrial Collective Research (IGF) of the German Federal Ministry for Economic Affairs and Climate Action (BMWK), approved by the Deutsches Zentrum für Luft- und Raumfahrt (DLR). The author thanks the participants of the working group for their constructive collaboration.
 
-## How to Cite
-tbd.
+## Citation
+
+Citation information will be added later.
