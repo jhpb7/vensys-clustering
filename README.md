@@ -110,30 +110,14 @@ See examples/output_files/ for concrete results.
 
     Keep flow units consistent (m³/h).
 
-    Add zero_inflated_rooms if some rooms are often unoccupied (probabilistic method).
-
-    The max load case ensures system sizing robustness.
+    The max load case ensures robustness.
 
 ## Note on AI usage
 Parts of this repository (documentation and/or code snippets) were prepared with the assistance of AI-based tools, namely ChatGPT version 4 and 5. All outputs were reviewed, validated, and adapted by the authors.
 
 
-## Contributing
-
-Contributions are welcome!
-
-    Put runnable demos in examples/.
-
-    Add docstrings for new functions.
-
-    Keep style consistent with existing code.
-
-
 ## Funding
-The presented results were obtained within the research project ‘‘Algorithmic System Planning of Air Handling Units’’, Project
-No. 22289 N/1, funded by the program for promoting the Industrial Collective Research (IGF) of the German Ministry of Economic
-Affairs and Climate Action (BMWK), approved by the Deutsches Zentrum für Luft- und Raumfahrt (DLR). We want to thank all the
-participants of the working group for the constructive collaboration.
+The presented code was written within Julius Breuer's dissertation ‘‘Algorithmische Systemplanung raumlufttechnischer Anlagen’’ at TU Darmstadt. Some of the results of the dissertation were obtained within the research project ‘‘Algorithmic System Planning of Air Handling Units’’, Project No. 22289 N/1, funded by the program for promoting the Industrial Collective Research (IGF) of the German Ministry of Economic Affairs and Climate Action (BMWK), approved by the Deutsches Zentrum für Luft- und Raumfahrt (DLR). We want to thank all the participants of the working group for the constructive collaboration.
 
 
 ## How to Cite

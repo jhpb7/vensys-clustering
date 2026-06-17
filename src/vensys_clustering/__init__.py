@@ -10,7 +10,7 @@ from .utils import (
     add_max_load_case,
     remap_load_cases_and_time_shares,
 )
-from .wasserstein import (
+from .load_distributions import (
     build_zone_pmfs,
     cluster_time_slots_from_distribution,
     extract_cluster_representatives,
