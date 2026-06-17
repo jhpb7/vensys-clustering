@@ -8,6 +8,7 @@ from .utils import (
     load_scenario_data_from_yaml,
     compute_theoretical_max_q_per_zone,
     add_max_load_case,
+    remap_load_cases_and_time_shares,
 )
 from .wasserstein import (
     build_zone_pmfs,

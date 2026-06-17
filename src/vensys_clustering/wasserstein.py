@@ -1,13 +1,13 @@
-from typing import Dict, List, Tuple, Optional
-from collections import defaultdict, Counter
-
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, wasserstein_distance
-from scipy.signal import convolve
 from sklearn.cluster import AgglomerativeClustering
+from typing import Dict, List, Tuple
+from collections import defaultdict
+
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
+from collections import Counter
 
 
 def max_binom_volumeflow_pmf(
@@ -15,12 +15,11 @@ def max_binom_volumeflow_pmf(
     p: float,
     q_building: float,
     q_per_person: float,
-    zero_inflation: float = 0.0,
     resolution: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate the PMF and support for the required volume flow in a room,
-    accounting for uncertainty in occupancy and possible zero inflation.
+    accounting for uncertainty in occupancy.
 
     The demand is defined as:
         max(q_persons, q_building)
@@ -39,8 +38,6 @@ def max_binom_volumeflow_pmf(
             Ventilation demand per person.
         resolution: float
             Discretization resolution in volume flow units.
-        zero_inflation: float
-            Additional probability mass at zero demand (e.g. due to closed rooms).
 
     Returns:
         Tuple[np.ndarray, np.ndarray]
@@ -48,19 +45,10 @@ def max_binom_volumeflow_pmf(
             - Corresponding support array (volume flow values)
     """
 
-    # Adjusted p' for zero-inflated binomial
-    p_prime = p / (1 - zero_inflation)
-    if p_prime > 1:
-        raise ValueError(
-            f"Invalid z={zero_inflation}, resulting p'={p_prime} exceeds 1"
-        )
-
     x_people = np.arange(0, n + 1)
-    binom_pmf_prime = binom.pmf(x_people, n, p_prime)
+    binom_pmf_prime = binom.pmf(x_people, n, p)
 
-    # Zero-inflated PMF
-    pmf_people = (1 - zero_inflation) * binom_pmf_prime
-    pmf_people[0] += zero_inflation  # inflate the zero
+    pmf_people = binom_pmf_prime
 
     q_values = x_people * q_per_person
 
@@ -93,27 +81,28 @@ def merge_pmfs(
             - Merged PMF
             - Merged support
     """
-    merged_pmf = pmfs[0]
-    merged_support = supports[0]
+    merged = {float(v): float(p) for v, p in zip(supports[0], pmfs[0])}
 
-    for i in range(1, len(pmfs)):
-        pmf = pmfs[i]
-        support = supports[i]
-        new_pmf = convolve(merged_pmf, pmf)
-        new_support = np.arange(len(new_pmf)) * resolution + (
-            merged_support[0] + support[0]
-        )
-        merged_pmf = new_pmf
-        merged_support = new_support
+    for pmf, support in zip(pmfs[1:], supports[1:]):
+        new = defaultdict(float)
 
+        for v1, p1 in merged.items():
+            for v2, p2 in zip(support, pmf):
+                key = round((v1 + float(v2)) / resolution) * resolution
+                new[key] += p1 * float(p2)
+
+        merged = dict(new)
+
+    merged_support = np.array(sorted(merged.keys()), dtype=float)
+    merged_pmf = np.array([merged[v] for v in merged_support], dtype=float)
     merged_pmf /= merged_pmf.sum()
+
     return merged_pmf, merged_support
 
 
 def build_zone_pmfs(
     df: pd.DataFrame,
     rooms_to_merge: Dict[str, List[str]],
-    zero_inflated_rooms: Optional[Dict[str, float]] = None,
     resolution: float = 1.0,
 ) -> Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]:
     """
@@ -122,15 +111,12 @@ def build_zone_pmfs(
     Parameters:
         df: DataFrame with room-level time slot data.
         rooms_to_merge: Mapping from zone name to list of room names to merge.
-        zero_inflated_rooms: Optional mapping of room names to zero-inflation probabilities.
         resolution: Volume flow resolution.
 
     Returns:
         Dict[time_slot, Dict[zone_or_room, (pmf, support)]]
     """
 
-    if zero_inflated_rooms is None:
-        zero_inflated_rooms = {}
     zone_pmfs_by_time = {}
 
     for time_slot in df["time_slot"].unique():
@@ -146,16 +132,11 @@ def build_zone_pmfs(
                 q_building, q_per_person = float(row["q_area"]), float(
                     row["q_per_person"]
                 )
-                if room in zero_inflated_rooms.keys():
-                    zero_inflation = zero_inflated_rooms[room]
-                else:
-                    zero_inflation = 0
                 pmf, support = max_binom_volumeflow_pmf(
                     n,
                     p,
                     q_building,
                     q_per_person,
-                    zero_inflation,
                     resolution,
                 )
                 pmfs.append(pmf)
@@ -170,12 +151,8 @@ def build_zone_pmfs(
                 continue
             n, p = int(row["max_persons"]), float(row["occupancy"])
             q_building, q_per_person = float(row["q_area"]), float(row["q_per_person"])
-            if room in zero_inflated_rooms.keys():
-                zero_inflation = zero_inflated_rooms[room]
-            else:
-                zero_inflation = 0
             pmf, support = max_binom_volumeflow_pmf(
-                n, p, q_building, q_per_person, zero_inflation, resolution
+                n, p, q_building, q_per_person, resolution
             )
             zone_pmfs[room] = (pmf, support)
 
@@ -187,41 +164,59 @@ def build_zone_pmfs(
 def compute_distance_matrix(
     zone_pmfs_by_time: Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]
 ) -> pd.DataFrame:
-    """
-    Compute the Wasserstein distance matrix between all time slots.
-
-    Parameters:
-        zone_pmfs_by_time: Dict of time slots and their zone PMFs.
-
-    Returns:
-        DataFrame: Symmetric distance matrix (time_slot x time_slot)
-    """
     time_slots = list(zone_pmfs_by_time.keys())
     dist_matrix = np.zeros((len(time_slots), len(time_slots)))
 
-    for i, _ in enumerate(time_slots):
+    for i in range(len(time_slots)):
         for j in range(i + 1, len(time_slots)):
             t1, t2 = time_slots[i], time_slots[j]
-            zones = zone_pmfs_by_time[t1].keys()
+
+            # Use only zones that exist in both time slots
+            zones = set(zone_pmfs_by_time[t1]).intersection(zone_pmfs_by_time[t2])
+
             dists = []
+
             for zone in zones:
                 pmf1, support1 = zone_pmfs_by_time[t1][zone]
                 pmf2, support2 = zone_pmfs_by_time[t2][zone]
-                min_s, max_s = min(support1[0], support2[0]), max(
-                    support1[-1], support2[-1]
-                )
-                resolution = support1[1] - support1[0]
-                common_support = np.arange(min_s, max_s + resolution, resolution)
-                p1, p2 = np.zeros_like(common_support), np.zeros_like(common_support)
-                for k, val in enumerate(common_support):
-                    if val in support1:
-                        p1[k] = pmf1[np.where(support1 == val)[0][0]]
-                    if val in support2:
-                        p2[k] = pmf2[np.where(support2 == val)[0][0]]
+
+                pmf1 = np.asarray(pmf1, dtype=float)
+                pmf2 = np.asarray(pmf2, dtype=float)
+                support1 = np.asarray(support1, dtype=float)
+                support2 = np.asarray(support2, dtype=float)
+
+                # Skip invalid / empty distributions
+                if (
+                    len(pmf1) == 0
+                    or len(pmf2) == 0
+                    or len(pmf1) != len(support1)
+                    or len(pmf2) != len(support2)
+                    or not np.isfinite(pmf1).all()
+                    or not np.isfinite(pmf2).all()
+                    or pmf1.sum() <= 0
+                    or pmf2.sum() <= 0
+                ):
+                    continue
+
+                # Normalise to be safe
+                pmf1 = pmf1 / pmf1.sum()
+                pmf2 = pmf2 / pmf2.sum()
+
                 dists.append(
-                    wasserstein_distance(common_support, common_support, p1, p2)
+                    wasserstein_distance(
+                        support1,
+                        support2,
+                        u_weights=pmf1,
+                        v_weights=pmf2,
+                    )
                 )
-            dist_matrix[i, j] = dist_matrix[j, i] = np.mean(dists)
+
+            if len(dists) == 0:
+                dist = np.nan
+            else:
+                dist = np.mean(dists)
+
+            dist_matrix[i, j] = dist_matrix[j, i] = dist
 
     return pd.DataFrame(dist_matrix, index=time_slots, columns=time_slots)
 
@@ -230,7 +225,6 @@ def cluster_time_slots_from_distribution(
     df: pd.DataFrame,
     rooms_to_merge: Dict[str, List[str]],
     n_clusters: int = 3,
-    zero_inflated_rooms: Optional[Dict[str, float]] = None,
     resolution: float = 1.0,
 ) -> Tuple[Dict[str, int], Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]]:
     """
@@ -247,11 +241,8 @@ def cluster_time_slots_from_distribution(
             - Mapping from time_slot to cluster label
             - PMF dictionary from build_zone_pmfs
     """
-    if zero_inflated_rooms is None:
-        zero_inflated_rooms = {}
-    zone_pmfs_by_time = build_zone_pmfs(
-        df, rooms_to_merge, zero_inflated_rooms, resolution
-    )
+
+    zone_pmfs_by_time = build_zone_pmfs(df, rooms_to_merge, resolution)
     dist_matrix = compute_distance_matrix(zone_pmfs_by_time)
 
     model = AgglomerativeClustering(

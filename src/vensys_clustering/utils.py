@@ -171,6 +171,34 @@ def merge_rooms(df: pd.DataFrame, building_data: Dict[str, Any]) -> pd.DataFrame
     return df_merged[[ROOM, TIME_SLOT, Q_REQUIRED]].sort_values([ROOM, TIME_SLOT])
 
 
+def remap_load_cases_and_time_shares(
+    load_cases: dict[int, dict[str, float]],
+    time_shares: dict[int, float],
+) -> tuple[dict[int, dict[str, float]], dict[int, float]]:
+    """
+    Remap load case keys by ascending total volume flow.
+
+    The load case with the smallest summed room flow gets key 0, the next
+    gets key 1, and so on. time_shares is remapped with the same key mapping
+    and returned sorted by key.
+
+    Returns:
+        remapped_load_cases, remapped_time_shares
+    """
+    sorted_old_keys = sorted(load_cases, key=lambda k: sum(load_cases[k].values()))
+    old_to_new = {old_key: new_key for new_key, old_key in enumerate(sorted_old_keys)}
+
+    remapped_load_cases = {
+        old_to_new[old_key]: load_cases[old_key] for old_key in sorted_old_keys
+    }
+
+    remapped_time_shares = dict(
+        sorted((old_to_new[old_key], value) for old_key, value in time_shares.items())
+    )
+
+    return remapped_load_cases, remapped_time_shares
+
+
 def cluster_time_slots_by_q(
     df: pd.DataFrame, n_clusters: int = 3
 ) -> Dict[RoomID, List[float]]:
@@ -216,6 +244,34 @@ def cluster_time_slots_by_q(
     clustered_q_dict: Dict[RoomID, List[float]] = room_cluster_q.to_dict()
 
     return clustered_q_dict, time_shares
+
+
+def order_load_cases_and_time_shares(
+    load_cases: dict[int, dict[str, float]],
+    time_shares: dict[int, float],
+) -> tuple[dict[int, dict[str, float]], dict[int, float]]:
+    """
+    Remap load case keys by ascending total volume flow.
+
+    The load case with the smallest summed room flow gets key 0, the next
+    gets key 1, and so on. time_shares is remapped with the same key mapping
+    and returned sorted by key.
+
+    Returns:
+        ordered_load_cases, ordered_time_shares
+    """
+    sorted_old_keys = sorted(load_cases, key=lambda k: sum(load_cases[k].values()))
+    old_to_new = {old_key: new_key for new_key, old_key in enumerate(sorted_old_keys)}
+
+    remapped_load_cases = {
+        old_to_new[old_key]: load_cases[old_key] for old_key in sorted_old_keys
+    }
+
+    remapped_time_shares = dict(
+        sorted((old_to_new[old_key], value) for old_key, value in time_shares.items())
+    )
+
+    return remapped_load_cases, remapped_time_shares
 
 
 def analyze_cluster_quality(
@@ -412,6 +468,6 @@ def add_max_load_case(
         Updated load_cases including the 'max' case,
         and updated time_shares with an entry for the max case.
     """
-    load_cases["max"] = max_load_case
+    load_cases[max(load_cases.keys(), default=-1) + 1] = max_load_case
     time_shares[max(time_shares.keys(), default=-1) + 1] = 0.0
     return load_cases, time_shares
